@@ -69,3 +69,6 @@ df["weight"] = df[factor]
 df = df[df["weight"] > 0]
 
 print(df["weight"].describe())
+
+
+
