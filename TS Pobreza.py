@@ -194,3 +194,45 @@ drop epub1
 *Terciaria: c/625.560
 
 
+df.loc[df['publico'].isin([2, 3, 4]), 'publico'] = 0
+df.loc[df['publico'].isin([1]), 'publico'] = 1
+
+
+
+#Cinco niveles de educacion: preescolar basica, secundaria, tecnica y universitaria MMM
+#Especial los pongo con escolar (asumo el mismo costo por estudiante) MMM
+df['niveledu'] = (df['P007_ASISTE_EDUCACION'])
+
+
+df.loc[df['niveledu'].isin([1,2]), 'niveledu'] = 1
+df.loc[df['niveledu'].isin([7,3]), 'niveledu'] = 2
+df.loc[df['niveledu'].isin([4]), 'niveledu'] = 3
+df.loc[df['niveledu'].isin([5,8,9]), 'niveledu'] = 4
+df.loc[df['niveledu'].isin([6]), 'niveledu'] = 5
+
+
+
+print(df['niveledu'].describe())
+
+df['niveledu_pub'] = (
+    df['niveledu'] * df['publico']
+    .fillna(0)
+)
+
+
+
+#2018: Costo mensual por estudiante  de los servicios de educación recibidos MMM
+#Presscolar  c/ 70.372
+#Primaria: c/  132.213
+#Secundaria:  c/ 133.6756382
+#Tecnica  c/ 210.749
+#Terciaria: c/ 775.82
+
+df['tse_e'] = (df['niveledu_pub']
+        .replace({1:70372, 2:132213, 3:133675.6382, 4:210749, 5:775825, 0:0})
+        .fillna(0)
+               )
+
+
+
+print(df['tse_e'].describe())
