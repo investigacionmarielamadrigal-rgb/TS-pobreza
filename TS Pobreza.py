@@ -31,6 +31,13 @@ vars_df = pd.DataFrame({
     "label": meta.column_labels
 })
 
+print(df['ID_ZONA'].describe())
+
+
+
+df['lp'] = df['ID_ZONA'].replace({1: 110456, 2: 84922})
+df['lpe'] = df['ID_ZONA'].replace({1: 50311, 2: 41801})
+
 
 
 # ─────────────────────────────────────────────
@@ -199,6 +206,8 @@ df['tse_e'] = (df['niveledu_pub']
         .fillna(0)
                )
 
-
+print(df.columns.tolist())
 
 print(df['tse_e'].describe())
+
+#(df['lp','lpe' ].describe())
