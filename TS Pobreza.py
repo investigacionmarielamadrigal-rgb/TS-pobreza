@@ -210,4 +210,82 @@ print(df.columns.tolist())
 
 print(df['tse_e'].describe())
 
+
+
 #(df['lp','lpe' ].describe())
+
+
+df['tse_e'] = (df['niveledu_pub']
+        .replace({1:70372, 2:132213, 3:133675.6382, 4:210749, 5:775825, 0:0})
+        .fillna(0)
+               )
+
+df['tse_e'] = (df['niveledu_pub']
+        .replace({1:70372, 2:132213, 3:133675.6382, 4:210749, 5:775825, 0:0})
+        .fillna(0)
+               )
+
+
+df['tse_e'] = (df['niveledu_pub']
+        .replace({1:70372, 2:132213, 3:133675.6382, 4:210749, 5:775825, 0:0})
+        .fillna(0)
+               )
+
+
+
+
+df['tse_paquetEscol'] = (df['P016_IMAS_IMPLEM_ESCOLAR']
+        .replace({1:9091})
+        .fillna(0)
+               )
+
+df['tse_becaTecnicos'] = (df['PS10_BECA_CURSOS_TECNICOS']
+        .replace({1:186588,2:186588 })
+        .fillna(0)
+               )
+
+
+
+df['tse_CentrosPAM'] = (df['PS15_DIAS_BENEFIC_ADULTOSMAY']
+        .replace({1:27207*'PS15_DIAS_BENEFIC_ADULTOSMAY',7:27207*'PS15_DIAS_BENEFIC_ADULTOSMAY'})
+        .fillna(0)
+               )
+
+
+
+df['tse_Alimentos_CEN'] = (df['PS16_RECIBE_ALIMENTOS_CEN']
+        .replace({1:65722*'PS16_RECIBE_ALIMENTOS_CEN',3:65722*'PS16_RECIBE_ALIMENTOS_CEN'})
+        .fillna(0)
+               )
+
+
+print(df['PS14_FRECUENCIA_DIAS_CUIDO'].describe())
+
+
+df['tse_Cuido'] = (df['PS16_RECIBE_ALIMENTOS_CEN']
+        .replace({1:123349*'PS14_FRECUENCIA_DIAS_CUIDO',3:65722*'PS16_RECIBE_ALIMENTOS_CEN'})
+        .fillna(0)
+               )
+
+gen temp5=(123349* PS14)/1000000  if ((P029_CUIDO==3 & PS13==2))
+
+
+
+
+gen temp6=(80177* PS14)/1000000   if  ((P029_CUIDO==3 & PS13==1)& (PS14>= 1 & PS14 <= 6))
+gen temp7=(158096* PS14)/1000000   if  (((P029_CUIDO==1|P029_CUIDO==2) & PS13==2)& (PS14>= 1 & PS14 <= 6))
+gen temp8=(102762* PS14)/1000000  if  (((P029==1|P029_CUIDO==2) & PS13==1)& (PS14>= 1 & PS14 <= 6))
+gen temp9= (P019*27207)/1000000 if (P019>= 1 & P019 <= 5)
+gen temp10= (P020*37276)/1000000  if ((P020>= 1 & P020 <= 5) & P007==3)
+gen temp11= (P020*45478)/1000000 if ((P020>= 1 & P020 <= 5)& P007==4)
+gen temp12= (P021*64653)/1000000 if (P021>= 1 & P021<= 5)
+gen temp13 = (183013/H078)/1000000 if H090==1 & hh==1
+gen temp14= (12800*12)/1000000 if QUINTIL_NACIONAL==1 & HG09==1
+gen temp15= (9600*12)/1000000 if QUINTIL_NACIONAL==2 & HG09==1
+gen temp16= (6400*12)/1000000 if QUINTIL_NACIONAL==3 & HG09==1
+
+egen tseot= rowtotal(temp1 temp2 temp3 temp4 temp5 temp6 temp7 temp8 temp9 temp10 temp11 temp12 temp13 temp14 temp15 temp16)
+drop temp1 temp2 temp3 temp4 temp5 temp6 temp7 temp8 temp9 temp10 temp11 temp12 temp13 temp14 temp15 temp16
+tab tseot [fw=FACTOR]
+
+
