@@ -267,25 +267,102 @@ df['tse_Cuido'] = (df['PS16_RECIBE_ALIMENTOS_CEN']
         .fillna(0)
                )
 
-gen temp5=(123349* PS14)/1000000  if ((P029_CUIDO==3 & PS13==2))
+
+
+df["temp5"] = np.where(
+    (df["P029_CUIDO"] == 3) & (df["PS13_HORARIO_SERV_CUIDO"] == 2),
+    (123349 * df["PS14_FRECUENCIA_DIAS_CUIDO"]),
+    np.nan
+)
+
+df["temp6"] = np.where(
+    (df["P029_CUIDO"] == 3) & (df["PS13_HORARIO_SERV_CUIDO"] == 1) & (df["PS14_FRECUENCIA_DIAS_CUIDO"].between(1, 6)),
+    (80177 * df["PS14_FRECUENCIA_DIAS_CUIDO"]) ,
+    np.nan
+)
+
+df["temp7"] = np.where(
+    ((df["P029_CUIDO"].isin([1, 2])) & (df["PS13_HORARIO_SERV_CUIDO"] == 2) & (df["PS14_FRECUENCIA_DIAS_CUIDO"].between(1, 6))),
+    (158096 * df["PS14_FRECUENCIA_DIAS_CUIDO"]) ,
+    np.nan
+)
+
+df["temp8"] = np.where(
+    ((df["P029_CUIDO"].isin([1, 2])) & (df["PS13_HORARIO_SERV_CUIDO"] == 1) & (df["PS14_FRECUENCIA_DIAS_CUIDO"].between(1, 6))),
+    (102762 * df["PS14_FRECUENCIA_DIAS_CUIDO"]) ,
+    np.nan
+)
+
+
+df["temp9"] = np.where(
+    df["P019_DESAYUNO_ESCOLAR"].between(1, 5),
+    (df["P019_DESAYUNO_ESCOLAR"] * 27207),
+    np.nan
+)
+
+df["temp10"] = np.where(
+    (df["P020_ALMUERZO_ESCOLAR"].between(1, 5)) & (df["P007_ASISTE_EDUCACION"] == 3),
+    (df["P020_ALMUERZO_ESCOLAR"] * 37276),
+    np.nan
+)
+
+df["temp11"] = np.where(
+    (df["P020_ALMUERZO_ESCOLAR"].between(1, 5)) & (df["P007_ASISTE_EDUCACION"] == 4),
+    (df["P020_ALMUERZO_ESCOLAR"] * 45478),
+    np.nan
+)
+
+df["temp12"] = np.where(
+    df["P021_TRANSPORTE_ESCOLAR"].between(1, 5),
+    (df["P021_TRANSPORTE_ESCOLAR"] * 64653),
+    np.nan
+)
 
 
 
+ruta2 = r"C:\Users\MARIELA-IICE\OneDrive - Universidad de Costa Rica\Mariela IICE\TS Pobreza\Enigh2018_CreaVar_ Hogar_PUBLICA.sav"
 
-gen temp6=(80177* PS14)/1000000   if  ((P029_CUIDO==3 & PS13==1)& (PS14>= 1 & PS14 <= 6))
-gen temp7=(158096* PS14)/1000000   if  (((P029_CUIDO==1|P029_CUIDO==2) & PS13==2)& (PS14>= 1 & PS14 <= 6))
-gen temp8=(102762* PS14)/1000000  if  (((P029==1|P029_CUIDO==2) & PS13==1)& (PS14>= 1 & PS14 <= 6))
-gen temp9= (P019*27207)/1000000 if (P019>= 1 & P019 <= 5)
-gen temp10= (P020*37276)/1000000  if ((P020>= 1 & P020 <= 5) & P007==3)
-gen temp11= (P020*45478)/1000000 if ((P020>= 1 & P020 <= 5)& P007==4)
-gen temp12= (P021*64653)/1000000 if (P021>= 1 & P021<= 5)
-gen temp13 = (183013/H078)/1000000 if H090==1 & hh==1
-gen temp14= (12800*12)/1000000 if QUINTIL_NACIONAL==1 & HG09==1
-gen temp15= (9600*12)/1000000 if QUINTIL_NACIONAL==2 & HG09==1
-gen temp16= (6400*12)/1000000 if QUINTIL_NACIONAL==3 & HG09==1
+df2, meta = pyreadstat.read_sav(
+    ruta2,
+    apply_value_formats=False
+)
 
-egen tseot= rowtotal(temp1 temp2 temp3 temp4 temp5 temp6 temp7 temp8 temp9 temp10 temp11 temp12 temp13 temp14 temp15 temp16)
-drop temp1 temp2 temp3 temp4 temp5 temp6 temp7 temp8 temp9 temp10 temp11 temp12 temp13 temp14 temp15 temp16
-tab tseot [fw=FACTOR]
+print(df2.shape)
+print(df.shape)
+df2["LLAVE_HOGAR"].duplicated().sum()
+
+
+df_merge = df2.merge(
+    df,
+    on="LLAVE_HOGAR",
+    how="left",
+    validate="one_to_many"
+)
+
+df2["temp13"] = np.where(
+    (df2["H090_BONO_VIVIENDA"] == 1) & (df2["ID_HOGAR"] == 1),
+    (183013 / df2["H078_CANT_MIEMBROS_HOGAR"]),
+    np.nan
+)
+
+
+df2["temp14"] = np.where(
+    (df2["QUINTIL_NACIONAL"] == 1) & (df2["HG09_HOGARES_CONECTADOS"] == 1),
+    (12800),
+    np.nan
+)
+
+df2["temp15"] = np.where(
+    (df2["QUINTIL_NACIONAL"] == 2) & (df2["HG09_HOGARES_CONECTADOS"] == 1),
+    (9600),
+    np.nan
+)
+
+df2["temp16"] = np.where(
+    (df2["QUINTIL_NACIONAL"] == 3) & (df2["HG09_HOGARES_CONECTADOS"] == 1),
+    (6400),
+    np.nan
+)
+
 
 
