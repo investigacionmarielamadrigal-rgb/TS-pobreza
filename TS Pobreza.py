@@ -366,3 +366,27 @@ df2["temp16"] = np.where(
 
 
 
+
+
+
+
+df['LPE'] = (df['ID_ZONA']
+        .replace({1:50311,2:41801})
+        .fillna(0)
+               )
+
+
+
+df['LP'] = (df['ID_ZONA']
+        .replace({1:110456,2:84922})
+        .fillna(0)
+               )
+
+
+
+
+
+
+
+
+
