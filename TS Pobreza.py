@@ -6,8 +6,8 @@ import numpy as np
 # 1. Ruta y lectura del archivo SPSS
 # ─────────────────────────────────────────────
 
-#ruta = r"C:\Users\MARIELA-IICE\OneDrive - Universidad de Costa Rica\Mariela IICE\TS Pobreza\Enigh2018_CreaVar_ Personas_PUBLICA.sav"
-ruta = r"C:\Users\marie\OneDrive - Universidad de Costa Rica\Mariela IICE\TS Pobreza\Enigh2018_CreaVar_ Personas_PUBLICA.sav"
+ruta = r"C:\Users\MARIELA-IICE\OneDrive - Universidad de Costa Rica\Mariela IICE\TS Pobreza\Enigh2018_CreaVar_ Personas_PUBLICA.sav"
+#ruta = r"C:\Users\marie\OneDrive - Universidad de Costa Rica\Mariela IICE\TS Pobreza\Enigh2018_CreaVar_ Personas_PUBLICA.sav"
 
 
 
@@ -324,8 +324,8 @@ df["temp12"] = np.where(
 
 
 
-#ruta2 = r"C:\Users\MARIELA-IICE\OneDrive - Universidad de Costa Rica\Mariela IICE\TS Pobreza\Enigh2018_CreaVar_ Hogar_PUBLICA.sav"
-ruta2 = r"C:\Users\marie\OneDrive - Universidad de Costa Rica\Mariela IICE\TS Pobreza\Enigh2018_CreaVar_ Hogar_PUBLICA.sav"
+ruta2 = r"C:\Users\MARIELA-IICE\OneDrive - Universidad de Costa Rica\Mariela IICE\TS Pobreza\Enigh2018_CreaVar_ Hogar_PUBLICA.sav"
+#ruta2 = r"C:\Users\marie\OneDrive - Universidad de Costa Rica\Mariela IICE\TS Pobreza\Enigh2018_CreaVar_ Hogar_PUBLICA.sav"
 
 df2, meta = pyreadstat.read_sav(
     ruta2,
@@ -373,8 +373,6 @@ df2["temp16"] = np.where(
 
 
 
-
-
 df['LPE'] = (df['ID_ZONA']
         .replace({1:50311,2:41801})
         .fillna(0)
@@ -389,9 +387,49 @@ df['LP'] = (df['ID_ZONA']
 
 
 
+df['INGRESO_CORR_BRUTO_CVL'] = df['P226_INGRESO_CORR_BRUTO_SVL'] + df['P228_VALOR_LOCATIVO_IMPUTADO_NETO']
+
+
+# Lista de transferencias públicas
+transf_cols = [
+    'PS30_TRANSF_PENSION_IVMN_BRUTA',
+    'P203_TRANSF_PENSION_RNC',
+    'P205_TRANF_BECA_SUP_TEC_PUB',
+    'P207_TRANSF_BECA_PUBL_1Y2',
+    'P208_TRANSF_AYUDA_PUB',
+    'P216_INCAPACIDAD_ENFERMEDAD',
+    'P217_LICENCIA_MATERNIDAD',
+    'PS32_TRANSF_IMAS_NEGOCIO'
+]
+
+deducc_cols = [
+    'PS30_TRANSF_PENSION_IVMN_BRUTA',
+    'P203_TRANSF_PENSION_RNC',
+    'P205_TRANF_BECA_SUP_TEC_PUB',
+    'P207_TRANSF_BECA_PUBL_1Y2',
+    'PS31_TRANSF_PENSION_IVMN_DEDUCC',
+]
 
 
 
+# Suma de transferencias
+df['SUM_TRANSF_PUB'] = df[transf_cols].sum(axis=1)
+
+# Ingreso neto sin transferencias
+df['YN_STS_SVL'] = df['P226_INGRESO_CORR_BRUTO_SVL'] - df['SUM_TRANSF_PUB']
+df['YN_STS_CVL'] = df['P235_TOT_INGRESO_BRUTO_SIN_VL'] - df['SUM_TRANSF_PUB']
+
+print(type(df['YN_STS_SVL'].iloc[0]), type(df['LP'].iloc[0]))
+
+cols = ['YN_STS_SVL','LP','LPE']
+df[cols] = df[cols].replace('.', 0)
+df[cols] = df[cols].apply(pd.to_numeric, errors='coerce')
 
 
+df['YN_STS_SVL'] = pd.to_numeric(df['YN_STS_SVL'], errors='coerce')
+# Pobreza
+df['POB_STS'] = (df['YN_STS_SVL'] < df['LP']).astype(int)
+
+# Pobreza extrema
+df['POB_E_STS'] = (df['YN_STS_SVL'] < df['LPE']).astype(int)
 
