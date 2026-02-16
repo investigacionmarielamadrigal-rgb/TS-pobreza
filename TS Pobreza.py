@@ -1,6 +1,8 @@
 import pyreadstat
 import pandas as pd
 import numpy as np
+import statsmodels.api as sm
+
 
 # ─────────────────────────────────────────────
 # 1. Ruta y lectura del archivo SPSS
@@ -45,7 +47,7 @@ df['lpe'] = df['ID_ZONA'].replace({1: 50311, 2: 41801})
 
 
 # ─────────────────────────────────────────────
-# 4. Guardar metadata SPSS relevante
+# 4. Guardar metadata relevante
 # ─────────────────────────────────────────────
 
 spss_meta = {
@@ -54,33 +56,12 @@ spss_meta = {
     "missing": meta.missing_user_values
 }
 
-# ─────────────────────────────────────────────
-# 5. Identificar factor de expansión
-# ─────────────────────────────────────────────
-
-candidatos_peso = [
-    v for v in df.columns
-    if any(k in v.lower() for k in ["expan", "peso", "factor", "pond"])
-]
-
-print("Posibles factores de expansión:")
-
-
-for v in candidatos_peso:
-    idx = df.columns.get_loc(v)
-    print(f" - {v} → {meta.column_labels[idx]}")
 
 # ─────────────────────────────────────────────
-# 6. Definir peso (AJUSTAR al nombre correcto)
+# 5. TSE
+#SALUD
 # ─────────────────────────────────────────────
 
-factor = candidatos_peso[0]   # ← confirmar visualmente que es el correcto
-df["weight"] = df[factor]
-
-# Limpieza básica del peso
-df = df[df["weight"] > 0]
-
-print(df["weight"].describe())
 
 print(df['P036_EBAIS'].describe())
 
@@ -131,7 +112,7 @@ for p_col, dest_col in zip(columnas_p, columnas_destino):
 
 
 
-df['tse_s'] = (
+df['tse_ss'] = (
     df['cons_EBAIS'] * 48691 +
     df['cons_Clinica'] * 50923.45 +
     df['cons_Hospital'] * 61798.43 +
@@ -155,7 +136,7 @@ df[cols] = df[cols].fillna(0)
 print(df['medicamentos'].describe())
 
 
-print(df['tse_s'].describe())
+print(df['tse_ss'].describe())
 
 
 df['estudiante'] = (df['P010_CENTRO_EDUCATIVO'])
@@ -163,9 +144,6 @@ df['estudiante'] = (df['P010_CENTRO_EDUCATIVO'])
 
 
 df.loc[df['estudiante'].isin([1, 2, 3, 4]), 'estudiante'] = 1
-
-
-
 
 
 df['publico'] = (df['P010_CENTRO_EDUCATIVO'])
@@ -215,8 +193,6 @@ print(df.columns.tolist())
 print(df['tse_e'].describe())
 
 
-
-#(df['lp','lpe' ].describe())
 
 
 df['tse_e'] = (df['niveledu_pub']
@@ -273,50 +249,50 @@ df['tse_Cuido'] = (df['PS16_RECIBE_ALIMENTOS_CEN']
 
 
 
-df["temp5"] = np.where(
+df["tse_cuido3H2"] = np.where(
     (df["P029_CUIDO"] == 3) & (df["PS13_HORARIO_SERV_CUIDO"] == 2),
     (123349 * df["PS14_FRECUENCIA_DIAS_CUIDO"]),
     np.nan
 )
 
-df["temp6"] = np.where(
+df["tse_cuido3H1"] = np.where(
     (df["P029_CUIDO"] == 3) & (df["PS13_HORARIO_SERV_CUIDO"] == 1) & (df["PS14_FRECUENCIA_DIAS_CUIDO"].between(1, 6)),
     (80177 * df["PS14_FRECUENCIA_DIAS_CUIDO"]) ,
     np.nan
 )
 
-df["temp7"] = np.where(
+df["tse_cuido1y2H2"] = np.where(
     ((df["P029_CUIDO"].isin([1, 2])) & (df["PS13_HORARIO_SERV_CUIDO"] == 2) & (df["PS14_FRECUENCIA_DIAS_CUIDO"].between(1, 6))),
     (158096 * df["PS14_FRECUENCIA_DIAS_CUIDO"]) ,
     np.nan
 )
 
-df["temp8"] = np.where(
+df["tse_cuido1y2H2"] = np.where(
     ((df["P029_CUIDO"].isin([1, 2])) & (df["PS13_HORARIO_SERV_CUIDO"] == 1) & (df["PS14_FRECUENCIA_DIAS_CUIDO"].between(1, 6))),
     (102762 * df["PS14_FRECUENCIA_DIAS_CUIDO"]) ,
     np.nan
 )
 
 
-df["temp9"] = np.where(
+df["tse_desay"] = np.where(
     df["P019_DESAYUNO_ESCOLAR"].between(1, 5),
     (df["P019_DESAYUNO_ESCOLAR"] * 27207),
     np.nan
 )
 
-df["temp10"] = np.where(
+df["tse_almuerA3"] = np.where(
     (df["P020_ALMUERZO_ESCOLAR"].between(1, 5)) & (df["P007_ASISTE_EDUCACION"] == 3),
     (df["P020_ALMUERZO_ESCOLAR"] * 37276),
     np.nan
 )
 
-df["temp11"] = np.where(
+df["tse_almuerA4"] = np.where(
     (df["P020_ALMUERZO_ESCOLAR"].between(1, 5)) & (df["P007_ASISTE_EDUCACION"] == 4),
     (df["P020_ALMUERZO_ESCOLAR"] * 45478),
     np.nan
 )
 
-df["temp12"] = np.where(
+df["tse_transp_e"] = np.where(
     df["P021_TRANSPORTE_ESCOLAR"].between(1, 5),
     (df["P021_TRANSPORTE_ESCOLAR"] * 64653),
     np.nan
@@ -344,55 +320,68 @@ df_merge = df2.merge(
     validate="one_to_many"
 )
 
-df2["temp13"] = np.where(
-    (df2["H090_BONO_VIVIENDA"] == 1) & (df2["ID_HOGAR"] == 1),
-    (183013 / df2["H078_CANT_MIEMBROS_HOGAR"]),
+
+
+print(df_merge.columns.tolist())
+
+
+print(f"Base cargada: {df_merge.shape[0]} filas | {df_merge.shape[1]} variables")
+
+
+df_merge["tse_bono"] = np.where(
+    (df_merge["H090_BONO_VIVIENDA"] == 1) & (df_merge["ID_HOGAR_x"] == 1),
+    (183013),
     np.nan
 )
 
 
-df2["temp14"] = np.where(
-    (df2["QUINTIL_NACIONAL"] == 1) & (df2["HG09_HOGARES_CONECTADOS"] == 1),
+df_merge["tse_hconecq1"] = np.where(
+    (df_merge["QUINTIL_NACIONAL_x"] == 1) & (df_merge["HG09_HOGARES_CONECTADOS"] == 1)&
+    (df_merge["P001_PARENTESCO"] == 1),
     (12800),
     np.nan
 )
 
-df2["temp15"] = np.where(
-    (df2["QUINTIL_NACIONAL"] == 2) & (df2["HG09_HOGARES_CONECTADOS"] == 1),
+df_merge["tse_hconecq2"] = np.where(
+    (df_merge["QUINTIL_NACIONAL_x"] == 2) & (df_merge["HG09_HOGARES_CONECTADOS"] == 1) &
+    (df_merge["P001_PARENTESCO"] == 1),
     (9600),
     np.nan
 )
 
-df2["temp16"] = np.where(
-    (df2["QUINTIL_NACIONAL"] == 3) & (df2["HG09_HOGARES_CONECTADOS"] == 1),
+df_merge["tse_hconecq3"] = np.where(
+    (df_merge["QUINTIL_NACIONAL_x"] == 3) & (df_merge["HG09_HOGARES_CONECTADOS"] == 1)&
+    (df_merge["P001_PARENTESCO"] == 1),
     (6400),
     np.nan
 )
 
 
+df_merge['ID_ZONA_x'] = pd.to_numeric(df_merge['ID_ZONA_x'], errors='coerce')
 
 
+lp_vals  = {1:110456, 2:84922}
+lpe_vals = {1:50311, 2:41801}
 
-df['LPE'] = (df['ID_ZONA']
-        .replace({1:50311,2:41801})
-        .fillna(0)
-               )
+df_merge['LP'] = (
+    df_merge['ID_ZONA_x']
+        .map(lp_vals)
+        .astype(float)
+)
+
+df_merge['LPE'] = (
+    df_merge['ID_ZONA_x']
+        .map(lpe_vals)
+        .astype(float)
+)
 
 
-
-df['LP'] = (df['ID_ZONA']
-        .replace({1:110456,2:84922})
-        .fillna(0)
-               )
-
-
-
-df['INGRESO_CORR_BRUTO_CVL'] = df['P226_INGRESO_CORR_BRUTO_SVL'] + df['P228_VALOR_LOCATIVO_IMPUTADO_NETO']
+df_merge[['LP', 'LPE']].describe()
 
 
 # Lista de transferencias públicas
 transf_cols = [
-    'PS30_TRANSF_PENSION_IVMN_BRUTA',
+    'P201_TRANSF_PENSION_IVMN_NET',
     'P203_TRANSF_PENSION_RNC',
     'P205_TRANF_BECA_SUP_TEC_PUB',
     'P207_TRANSF_BECA_PUBL_1Y2',
@@ -403,33 +392,213 @@ transf_cols = [
 ]
 
 deducc_cols = [
-    'PS30_TRANSF_PENSION_IVMN_BRUTA',
-    'P203_TRANSF_PENSION_RNC',
-    'P205_TRANF_BECA_SUP_TEC_PUB',
-    'P207_TRANSF_BECA_PUBL_1Y2',
-    'PS31_TRANSF_PENSION_IVMN_DEDUCC',
+    'P143_TOT_IMPUESTO_RENTA',
+    'P140_TOT_CONTRIB_SOCIALES'
+]
+
+df_merge['TRANSFM_PUB_PC'] = (
+    df_merge
+        .groupby('LLAVE_HOGAR')[transf_cols]
+        .transform('sum')
+        .sum(axis=1)
+        .div(df_merge['H078_CANT_MIEMBROS_HOGAR'])
+)
+
+
+df_merge['DEDUC_PUB_PC'] = (
+    df_merge
+        .groupby('LLAVE_HOGAR')[deducc_cols]
+        .transform('sum')
+        .sum(axis=1)
+        .div(df_merge['H078_CANT_MIEMBROS_HOGAR'])
+)
+
+
+print(df_merge['TRANSFM_PUB_PC'].describe())
+
+
+# Ingreso neto sin transferencias
+df_merge['Y_STS_SVL'] = df_merge['H192_ING_CORR_NETO_PC_SVL'] - df_merge['TRANSFM_PUB_PC']
+df_merge['Y_STS_CVL'] = df_merge['H192_ING_CORR_NETO_PC_SVL'] - df_merge['TRANSFM_PUB_PC']
+
+print(type(df_merge['Y_STS_SVL'].iloc[0]), type(df_merge['LP'].iloc[0]))
+
+cols = ['Y_STS_SVL','LP','LPE']
+df_merge[cols] = df_merge[cols].replace('.', 0)
+df_merge[cols] = df_merge[cols].apply(pd.to_numeric, errors='coerce')
+
+
+df_merge['Y_STS_SVL'] = pd.to_numeric(df_merge['Y_STS_SVL'], errors='coerce')
+
+# Pobreza
+df_merge['POB'] = (df_merge['H192_ING_CORR_NETO_PC_SVL'] < df_merge['LP']).astype(int)
+
+# Pobreza extrema
+df_merge['POB_E'] = (df_merge['H192_ING_CORR_NETO_PC_SVL'] < df_merge['LPE']).astype(int)
+
+
+# Pobreza ST
+df_merge['POB_STS'] = (df_merge['Y_STS_SVL'] < df_merge['LP']).astype(int)
+
+# Pobreza extrema ST
+df_merge['POB_E_STS'] = (df_merge['Y_STS_SVL'] < df_merge['LPE']).astype(int)
+
+
+
+
+
+
+print(df_merge[["LP", "LPE"]].describe())
+print(df_merge[['POB','POB_E', 'POB_STS','POB_E_STS']].describe())
+
+
+df_merge['TOT_CONTRIB_SOCIALES_PAGADAS'] = (
+    df_merge['P140_TOT_CONTRIB_SOCIALES'] * -1
+)
+
+# Lista de transferencias monetarias de la Seguridad social
+transf_SS = [
+    'P201_TRANSF_PENSION_IVMN_NET',
+    'P217_LICENCIA_MATERNIDAD',
+    'PS32_TRANSF_IMAS_NEGOCIO'
 ]
 
 
 
-# Suma de transferencias
-df['SUM_TRANSF_PUB'] = df[transf_cols].sum(axis=1)
-
-# Ingreso neto sin transferencias
-df['YN_STS_SVL'] = df['P226_INGRESO_CORR_BRUTO_SVL'] - df['SUM_TRANSF_PUB']
-df['YN_STS_CVL'] = df['P235_TOT_INGRESO_BRUTO_SIN_VL'] - df['SUM_TRANSF_PUB']
-
-print(type(df['YN_STS_SVL'].iloc[0]), type(df['LP'].iloc[0]))
-
-cols = ['YN_STS_SVL','LP','LPE']
-df[cols] = df[cols].replace('.', 0)
-df[cols] = df[cols].apply(pd.to_numeric, errors='coerce')
+df_merge['TMSS_PC'] = (
+    df_merge
+        .groupby('LLAVE_HOGAR')[transf_SS]
+        .transform('sum')
+        .sum(axis=1)
+        .div(df_merge['H078_CANT_MIEMBROS_HOGAR'])
+)
 
 
-df['YN_STS_SVL'] = pd.to_numeric(df['YN_STS_SVL'], errors='coerce')
-# Pobreza
-df['POB_STS'] = (df['YN_STS_SVL'] < df['LP']).astype(int)
+print(df_merge['TMSS_PC'].describe())
 
-# Pobreza extrema
-df['POB_E_STS'] = (df['YN_STS_SVL'] < df['LPE']).astype(int)
+df_merge['Y_TMSS_SVL'] = (df_merge['Y_STS_SVL']+ df_merge['TMSS_PC'])
 
+# Pobreza TMSS
+df_merge['POB_TMSS'] = (df_merge['Y_TMSS_SVL'] < df_merge['LP']).astype(int)
+
+# Pobreza extrema TMSS
+df_merge['POB_E_TMSS'] = (df_merge['Y_TMSS_SVL'] < df_merge['LPE']).astype(int)
+
+print(df_merge[['POB_TMSS', 'POB_E_TMSS']].describe())
+
+
+
+df_merge['TESS_PC'] = (
+    df_merge
+        .groupby('LLAVE_HOGAR')['tse_ss']
+        .transform('sum')
+        / df_merge['H078_CANT_MIEMBROS_HOGAR']
+)
+
+df_merge['Y_TESS_SVL'] = (df_merge['Y_STS_SVL']+ df_merge['TESS_PC'])
+
+# Pobreza TESS
+df_merge['POB_TESS'] = (df_merge['Y_TESS_SVL'] < df_merge['LP']).astype(int)
+
+
+# Pobreza extrema TESS
+df_merge['POB_E_TESS'] = (df_merge['Y_TESS_SVL'] < df_merge['LPE']).astype(int)
+
+print(df_merge[['POB_TESS', 'POB_E_TESS']].describe())
+
+
+
+
+# Transferencias públicas Monetarias
+transf_M_Edu = [
+        'P205_TRANF_BECA_SUP_TEC_PUB',
+    'P207_TRANSF_BECA_PUBL_1Y2',
+    'tse_becaTecnicos'
+]
+
+
+df_merge['TME_PC'] = (
+    df_merge
+        .groupby('LLAVE_HOGAR')[transf_M_Edu]
+        .transform('sum')
+        .sum(axis=1)
+        .div( df_merge['H078_CANT_MIEMBROS_HOGAR'])
+)
+
+
+transf_E_Edu = [
+        'tse_e',
+    "tse_desay",
+    "tse_almuerA3",
+    "tse_almuerA4",
+    "tse_transp_e"
+]
+
+
+
+df_merge['TEE_PC'] = (
+    df_merge
+        .groupby('LLAVE_HOGAR')[transf_E_Edu ]
+        .transform('sum')
+        / df_merge['H078_CANT_MIEMBROS_HOGAR']
+)
+
+
+
+
+transf_M_otras = [
+    'P203_TRANSF_PENSION_RNC',
+    'P208_TRANSF_AYUDA_PUB',
+    'PS32_TRANSF_IMAS_NEGOCIO'
+]
+
+
+
+
+df_merge['TMO_PC'] = (
+    df_merge
+        .groupby('LLAVE_HOGAR')[transf_M_otras]
+        .transform('sum')
+        .sum(axis=1)
+        .div(df_merge['H078_CANT_MIEMBROS_HOGAR'])
+)
+
+transf_E_otras= [
+    'tse_paquetEscol',
+    'tse_CentrosPAM',
+    'tse_Alimentos_CEN',
+    'tse_Cuido',
+    'tse_cuido3H2',
+    'tse_cuido3H1',
+    'tse_cuido1y2H2'
+    'tse_bono'
+    'tse_hconecq1',
+    'tse_hconecq2',
+    'tse_hconecq3',
+]
+
+
+df_merge['TEO_PC'] = (
+    df_merge
+        .groupby('LLAVE_HOGAR')[transf_E_otras]
+        .transform('sum')
+        .sum(axis=1)
+        .div(df_merge['H078_CANT_MIEMBROS_HOGAR'])
+)
+
+
+
+
+
+pob_vars = df_merge.filter(regex='^POB').columns
+
+for var in pob_vars:
+    d = sm.stats.DescrStatsW(
+        df_merge[var],
+        weights=df_merge['FACTOR_y'],
+        ddof=0
+    )
+
+    print(f"\nVariable: {var}")
+    print("Tasa ponderada:", d.mean*100)
+    print("Total ponderado:", d.sum)
