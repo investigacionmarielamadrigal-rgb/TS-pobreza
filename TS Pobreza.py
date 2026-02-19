@@ -380,7 +380,7 @@ df_merge[['LP', 'LPE']].describe()
 
 
 # Lista de transferencias públicas
-transf_cols = [
+transfM_cols = [
     'P201_TRANSF_PENSION_IVMN_NET',
     'P203_TRANSF_PENSION_RNC',
     'P205_TRANF_BECA_SUP_TEC_PUB',
@@ -391,78 +391,40 @@ transf_cols = [
     'PS32_TRANSF_IMAS_NEGOCIO'
 ]
 
-deducc_cols = [
-    'P143_TOT_IMPUESTO_RENTA',
-    'P140_TOT_CONTRIB_SOCIALES'
-]
+
 
 df_merge['TRANSFM_PUB_PC'] = (
     df_merge
-        .groupby('LLAVE_HOGAR')[transf_cols]
+        .groupby('LLAVE_HOGAR')[transfM_cols]
         .transform('sum')
         .sum(axis=1)
         .div(df_merge['H078_CANT_MIEMBROS_HOGAR'])
 )
 
 
-df_merge['DEDUC_PUB_PC'] = (
+
+df_merge['APORTESS_PC'] = (
     df_merge
-        .groupby('LLAVE_HOGAR')[deducc_cols]
+        .groupby('LLAVE_HOGAR')['P140_TOT_CONTRIB_SOCIALES']
         .transform('sum')
-        .sum(axis=1)
-        .div(df_merge['H078_CANT_MIEMBROS_HOGAR'])
+        /df_merge['H078_CANT_MIEMBROS_HOGAR']
 )
 
 
 print(df_merge['TRANSFM_PUB_PC'].describe())
 
-
-# Ingreso neto sin transferencias
-df_merge['Y_STS_SVL'] = df_merge['H192_ING_CORR_NETO_PC_SVL'] - df_merge['TRANSFM_PUB_PC']
-df_merge['Y_STS_CVL'] = df_merge['H192_ING_CORR_NETO_PC_SVL'] - df_merge['TRANSFM_PUB_PC']
-
-print(type(df_merge['Y_STS_SVL'].iloc[0]), type(df_merge['LP'].iloc[0]))
-
-cols = ['Y_STS_SVL','LP','LPE']
-df_merge[cols] = df_merge[cols].replace('.', 0)
-df_merge[cols] = df_merge[cols].apply(pd.to_numeric, errors='coerce')
-
-
-df_merge['Y_STS_SVL'] = pd.to_numeric(df_merge['Y_STS_SVL'], errors='coerce')
-
-# Pobreza
-df_merge['POB'] = (df_merge['H192_ING_CORR_NETO_PC_SVL'] < df_merge['LP']).astype(int)
-
-# Pobreza extrema
-df_merge['POB_E'] = (df_merge['H192_ING_CORR_NETO_PC_SVL'] < df_merge['LPE']).astype(int)
-
-
-# Pobreza ST
-df_merge['POB_STS'] = (df_merge['Y_STS_SVL'] < df_merge['LP']).astype(int)
-
-# Pobreza extrema ST
-df_merge['POB_E_STS'] = (df_merge['Y_STS_SVL'] < df_merge['LPE']).astype(int)
-
-
-
-
-
-
-print(df_merge[["LP", "LPE"]].describe())
-print(df_merge[['POB','POB_E', 'POB_STS','POB_E_STS']].describe())
-
+# Lista de transferencias monetarias de la Seguridad social
 
 df_merge['TOT_CONTRIB_SOCIALES_PAGADAS'] = (
     df_merge['P140_TOT_CONTRIB_SOCIALES'] * -1
 )
 
-# Lista de transferencias monetarias de la Seguridad social
 transf_SS = [
     'P201_TRANSF_PENSION_IVMN_NET',
     'P217_LICENCIA_MATERNIDAD',
-    'PS32_TRANSF_IMAS_NEGOCIO'
+    'PS32_TRANSF_IMAS_NEGOCIO',
+    'TOT_CONTRIB_SOCIALES_PAGADAS'
 ]
-
 
 
 df_merge['TMSS_PC'] = (
@@ -474,18 +436,6 @@ df_merge['TMSS_PC'] = (
 )
 
 
-print(df_merge['TMSS_PC'].describe())
-
-df_merge['Y_TMSS_SVL'] = (df_merge['Y_STS_SVL']+ df_merge['TMSS_PC'])
-
-# Pobreza TMSS
-df_merge['POB_TMSS'] = (df_merge['Y_TMSS_SVL'] < df_merge['LP']).astype(int)
-
-# Pobreza extrema TMSS
-df_merge['POB_E_TMSS'] = (df_merge['Y_TMSS_SVL'] < df_merge['LPE']).astype(int)
-
-print(df_merge[['POB_TMSS', 'POB_E_TMSS']].describe())
-
 
 
 df_merge['TESS_PC'] = (
@@ -495,23 +445,13 @@ df_merge['TESS_PC'] = (
         / df_merge['H078_CANT_MIEMBROS_HOGAR']
 )
 
-df_merge['Y_TESS_SVL'] = (df_merge['Y_STS_SVL']+ df_merge['TESS_PC'])
-
-# Pobreza TESS
-df_merge['POB_TESS'] = (df_merge['Y_TESS_SVL'] < df_merge['LP']).astype(int)
-
-
-# Pobreza extrema TESS
-df_merge['POB_E_TESS'] = (df_merge['Y_TESS_SVL'] < df_merge['LPE']).astype(int)
-
-print(df_merge[['POB_TESS', 'POB_E_TESS']].describe())
 
 
 
 
 # Transferencias públicas Monetarias
 transf_M_Edu = [
-        'P205_TRANF_BECA_SUP_TEC_PUB',
+    'P205_TRANF_BECA_SUP_TEC_PUB',
     'P207_TRANSF_BECA_PUBL_1Y2',
     'tse_becaTecnicos'
 ]
@@ -523,11 +463,11 @@ df_merge['TME_PC'] = (
         .transform('sum')
         .sum(axis=1)
         .div( df_merge['H078_CANT_MIEMBROS_HOGAR'])
-)
+                         )
 
 
 transf_E_Edu = [
-        'tse_e',
+    "tse_e",
     "tse_desay",
     "tse_almuerA3",
     "tse_almuerA4",
@@ -540,11 +480,9 @@ df_merge['TEE_PC'] = (
     df_merge
         .groupby('LLAVE_HOGAR')[transf_E_Edu ]
         .transform('sum')
-        / df_merge['H078_CANT_MIEMBROS_HOGAR']
+    .sum(axis=1)
+    .div(df_merge['H078_CANT_MIEMBROS_HOGAR'])
 )
-
-
-
 
 transf_M_otras = [
     'P203_TRANSF_PENSION_RNC',
@@ -570,21 +508,103 @@ transf_E_otras= [
     'tse_Cuido',
     'tse_cuido3H2',
     'tse_cuido3H1',
-    'tse_cuido1y2H2'
-    'tse_bono'
+    'tse_cuido1y2H2',
+    'tse_bono',
     'tse_hconecq1',
     'tse_hconecq2',
-    'tse_hconecq3',
+    'tse_hconecq3'
 ]
 
+df_merge[transf_E_otras] = (
+    df_merge[transf_E_otras]
+        .apply(pd.to_numeric, errors='coerce')  # convierte texto a NaN
+        .fillna(0)                              # reemplaza NaN por 0
+)
 
 df_merge['TEO_PC'] = (
-    df_merge
-        .groupby('LLAVE_HOGAR')[transf_E_otras]
-        .transform('sum')
-        .sum(axis=1)
+    df_merge[transf_E_otras]
+        .sum(axis=1)                              # suma por persona
+        .groupby(df_merge['LLAVE_HOGAR'])
+        .transform('sum')                         # suma por hogar
         .div(df_merge['H078_CANT_MIEMBROS_HOGAR'])
 )
+
+
+df_merge['TMTOT_PC'] = df_merge['TMSS_PC']+ df_merge['TME_PC']+ df_merge['TMO_PC']
+
+df_merge['TETOT_PC'] = df_merge['TESS_PC']+ df_merge['TEE_PC']+ df_merge['TEO_PC']
+
+
+
+# Pobreza
+df_merge['POB'] = (df_merge['H192_ING_CORR_NETO_PC_SVL'] < df_merge['LP']).astype(int)
+
+# Pobreza extrema
+df_merge['POB_E'] = (df_merge['H192_ING_CORR_NETO_PC_SVL'] < df_merge['LPE']).astype(int)
+
+
+
+
+# Ingreso neto sin transferencias
+df_merge['Y_STS_SVL'] = df_merge['H192_ING_CORR_NETO_PC_SVL'] - df_merge['TRANSFM_PUB_PC']+df_merge['APORTESS_PC']
+
+print(type(df_merge['Y_STS_SVL'].iloc[0]), type(df_merge['LP'].iloc[0]))
+
+cols = ['Y_STS_SVL','LP','LPE']
+df_merge[cols] = df_merge[cols].replace('.', 0)
+df_merge[cols] = df_merge[cols].apply(pd.to_numeric, errors='coerce')
+
+
+df_merge['Y_STS_SVL'] = pd.to_numeric(df_merge['Y_STS_SVL'], errors='coerce')
+
+
+# Pobreza ST
+df_merge['POB_STS'] = (df_merge['Y_STS_SVL'] < df_merge['LP']).astype(int)
+
+# Pobreza extrema ST
+df_merge['POB_E_STS'] = (df_merge['Y_STS_SVL'] < df_merge['LPE']).astype(int)
+
+
+
+
+
+
+print(df_merge[["LP", "LPE"]].describe())
+print(df_merge[['POB','POB_E', 'POB_STS','POB_E_STS']].describe())
+
+
+
+
+print(df_merge['TMSS_PC'].describe())
+
+df_merge['Y_TMSS_SVL'] = (df_merge['Y_STS_SVL']+ df_merge['TMSS_PC'])
+
+# Pobreza TMSS
+df_merge['POB_TMSS'] = (df_merge['Y_TMSS_SVL'] < df_merge['LP']).astype(int)
+
+# Pobreza extrema TMSS
+df_merge['POB_E_TMSS'] = (df_merge['Y_TMSS_SVL'] < df_merge['LPE']).astype(int)
+
+print(df_merge[['POB_TMSS', 'POB_E_TMSS']].describe())
+
+
+
+
+df_merge['Y_TESS_SVL'] = (df_merge['Y_STS_SVL']+ df_merge['TESS_PC'])
+
+# Pobreza TESS
+df_merge['POB_TESS'] = (df_merge['Y_TESS_SVL'] < df_merge['LP']).astype(int)
+
+
+# Pobreza extrema TESS
+df_merge['POB_E_TESS'] = (df_merge['Y_TESS_SVL'] < df_merge['LPE']).astype(int)
+
+print(df_merge[['POB_TESS', 'POB_E_TESS']].describe())
+
+
+
+
+
 
 
 
