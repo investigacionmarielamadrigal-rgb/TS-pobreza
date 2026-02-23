@@ -2,6 +2,7 @@ import pyreadstat
 import pandas as pd
 import numpy as np
 import statsmodels.api as sm
+import matplotlib.pyplot as plt
 
 
 # ─────────────────────────────────────────────
@@ -422,7 +423,6 @@ df_merge['TOT_CONTRIB_SOCIALES_PAGADAS'] = (
 transf_SS = [
     'P201_TRANSF_PENSION_IVMN_NET',
     'P217_LICENCIA_MATERNIDAD',
-    'PS32_TRANSF_IMAS_NEGOCIO',
     'TOT_CONTRIB_SOCIALES_PAGADAS'
 ]
 
@@ -493,7 +493,7 @@ transf_M_otras = [
 
 
 
-df_merge['TMO_PC'] = (
+df_merge['TMOT_PC'] = (
     df_merge
         .groupby('LLAVE_HOGAR')[transf_M_otras]
         .transform('sum')
@@ -521,7 +521,7 @@ df_merge[transf_E_otras] = (
         .fillna(0)                              # reemplaza NaN por 0
 )
 
-df_merge['TEO_PC'] = (
+df_merge['TEOT_PC'] = (
     df_merge[transf_E_otras]
         .sum(axis=1)                              # suma por persona
         .groupby(df_merge['LLAVE_HOGAR'])
@@ -530,9 +530,9 @@ df_merge['TEO_PC'] = (
 )
 
 
-df_merge['TMTOT_PC'] = df_merge['TMSS_PC']+ df_merge['TME_PC']+ df_merge['TMO_PC']
+df_merge['TMTOT_PC'] = df_merge['TMSS_PC']+ df_merge['TME_PC']+ df_merge['TMOT_PC']
 
-df_merge['TETOT_PC'] = df_merge['TESS_PC']+ df_merge['TEE_PC']+ df_merge['TEO_PC']
+df_merge['TETOT_PC'] = df_merge['TESS_PC']+ df_merge['TEE_PC']+ df_merge['TEOT_PC']
 
 
 
@@ -545,24 +545,24 @@ df_merge['POB_E'] = (df_merge['H192_ING_CORR_NETO_PC_SVL'] < df_merge['LPE']).as
 
 
 
-# Ingreso neto sin transferencias
-df_merge['Y_STS_SVL'] = df_merge['H192_ING_CORR_NETO_PC_SVL'] - df_merge['TRANSFM_PUB_PC']+df_merge['APORTESS_PC']
+# Ingreso neto sin transferencias públicas
+df_merge['Y_STP_SVL'] = df_merge['H192_ING_CORR_NETO_PC_SVL'] - df_merge['TRANSFM_PUB_PC']+df_merge['APORTESS_PC']
 
-print(type(df_merge['Y_STS_SVL'].iloc[0]), type(df_merge['LP'].iloc[0]))
+print(type(df_merge['Y_STP_SVL'].iloc[0]), type(df_merge['LP'].iloc[0]))
 
-cols = ['Y_STS_SVL','LP','LPE']
+cols = ['Y_STP_SVL','LP','LPE']
 df_merge[cols] = df_merge[cols].replace('.', 0)
 df_merge[cols] = df_merge[cols].apply(pd.to_numeric, errors='coerce')
 
 
-df_merge['Y_STS_SVL'] = pd.to_numeric(df_merge['Y_STS_SVL'], errors='coerce')
+df_merge['Y_STP_SVL'] = pd.to_numeric(df_merge['Y_STP_SVL'], errors='coerce')
 
 
 # Pobreza ST
-df_merge['POB_STS'] = (df_merge['Y_STS_SVL'] < df_merge['LP']).astype(int)
+df_merge['POB_STP'] = (df_merge['Y_STP_SVL'] < df_merge['LP']).astype(int)
 
 # Pobreza extrema ST
-df_merge['POB_E_STS'] = (df_merge['Y_STS_SVL'] < df_merge['LPE']).astype(int)
+df_merge['POB_E_STP'] = (df_merge['Y_STP_SVL'] < df_merge['LPE']).astype(int)
 
 
 
@@ -570,14 +570,14 @@ df_merge['POB_E_STS'] = (df_merge['Y_STS_SVL'] < df_merge['LPE']).astype(int)
 
 
 print(df_merge[["LP", "LPE"]].describe())
-print(df_merge[['POB','POB_E', 'POB_STS','POB_E_STS']].describe())
+print(df_merge[['POB','POB_E', 'POB_STP','POB_E_STP']].describe())
 
 
 
 
 print(df_merge['TMSS_PC'].describe())
 
-df_merge['Y_TMSS_SVL'] = (df_merge['Y_STS_SVL']+ df_merge['TMSS_PC'])
+df_merge['Y_TMSS_SVL'] = (df_merge['Y_STP_SVL']+ df_merge['TMSS_PC'])
 
 # Pobreza TMSS
 df_merge['POB_TMSS'] = (df_merge['Y_TMSS_SVL'] < df_merge['LP']).astype(int)
@@ -590,7 +590,7 @@ print(df_merge[['POB_TMSS', 'POB_E_TMSS']].describe())
 
 
 
-df_merge['Y_TESS_SVL'] = (df_merge['Y_STS_SVL']+ df_merge['TESS_PC'])
+df_merge['Y_TESS_SVL'] = (df_merge['Y_STP_SVL']+ df_merge['TESS_PC'])
 
 # Pobreza TESS
 df_merge['POB_TESS'] = (df_merge['Y_TESS_SVL'] < df_merge['LP']).astype(int)
@@ -603,22 +603,447 @@ print(df_merge[['POB_TESS', 'POB_E_TESS']].describe())
 
 
 
+df_merge['Y_TMESS_SVL'] = (
+    df_merge['Y_STP_SVL'].fillna(0) +
+    df_merge['TESS_PC'].fillna(0)+
+    df_merge['TMSS_PC'].fillna(0)
+)
+
+
+# Pobreza TESS
+df_merge['POB_TMESS'] = (df_merge['Y_TMESS_SVL'] < df_merge['LP']).astype(int)
+
+
+# Pobreza extrema TESS
+df_merge['POB_E_TMESS'] = (df_merge['Y_TMESS_SVL'] < df_merge['LPE']).astype(int)
+
+print(df_merge[['POB_TESS', 'POB_E_TESS']].describe())
 
 
 
+
+
+
+print(df_merge['TME_PC'].describe())
+
+df_merge['Y_TME_SVL'] = (df_merge['Y_STP_SVL']+ df_merge['TME_PC'])
+
+# Pobreza TME
+df_merge['POB_TME'] = (df_merge['Y_TME_SVL'] < df_merge['LP']).astype(int)
+
+# Pobreza extrema TME
+df_merge['POB_E_TME'] = (df_merge['Y_TME_SVL'] < df_merge['LPE']).astype(int)
+
+print(df_merge[['POB_TME', 'POB_E_TME']].describe())
+
+
+
+
+df_merge['Y_TEE_SVL'] = (df_merge['Y_STP_SVL']+ df_merge['TEE_PC'])
+
+# Pobreza TEE
+df_merge['POB_TEE'] = (df_merge['Y_TEE_SVL'] < df_merge['LP']).astype(int)
+
+
+# Pobreza extrema TEE
+df_merge['POB_E_TEE'] = (df_merge['Y_TEE_SVL'] < df_merge['LPE']).astype(int)
+
+print(df_merge[['POB_TEE', 'POB_E_TEE']].describe())
+
+
+
+df_merge['Y_TMEE_SVL'] = (
+    df_merge['Y_STP_SVL'].fillna(0) +
+    df_merge['TEE_PC'].fillna(0)+
+    df_merge['TME_PC'].fillna(0)
+)
+
+
+# Pobreza TEE
+df_merge['POB_TMEE'] = (df_merge['Y_TMEE_SVL'] < df_merge['LP']).astype(int)
+
+
+# Pobreza extrema TEE
+df_merge['POB_E_TMEE'] = (df_merge['Y_TMEE_SVL'] < df_merge['LPE']).astype(int)
+
+print(df_merge[['POB_TEE', 'POB_E_TEE']].describe())
+
+
+
+print(df_merge['TMOT_PC'].describe())
+
+df_merge['Y_TMOT_SVL'] = (df_merge['Y_STP_SVL']+ df_merge['TMOT_PC'])
+
+# Pobreza TMOT
+df_merge['POB_TMOT'] = (df_merge['Y_TMOT_SVL'] < df_merge['LP']).astype(int)
+
+# Pobreza extrema TMOT
+df_merge['POB_E_TMOT'] = (df_merge['Y_TMOT_SVL'] < df_merge['LPE']).astype(int)
+
+print(df_merge[['POB_TMOT', 'POB_E_TMOT']].describe())
+
+
+
+
+df_merge['Y_TEOT_SVL'] = (df_merge['Y_STP_SVL']+ df_merge['TEOT_PC'])
+
+# Pobreza TEOT
+df_merge['POB_TEOT'] = (df_merge['Y_TEOT_SVL'] < df_merge['LP']).astype(int)
+
+
+# Pobreza extrema TEOT
+df_merge['POB_E_TEOT'] = (df_merge['Y_TEOT_SVL'] < df_merge['LPE']).astype(int)
+
+print(df_merge[['POB_TEOT', 'POB_E_TEOT']].describe())
+
+
+
+df_merge['Y_TMEOT_SVL'] = (
+    df_merge['Y_STP_SVL'].fillna(0) +
+    df_merge['TEOT_PC'].fillna(0)+
+    df_merge['TMOT_PC'].fillna(0)
+)
+
+
+# Pobreza TEOT
+df_merge['POB_TMEOT'] = (df_merge['Y_TMEOT_SVL'] < df_merge['LP']).astype(int)
+
+
+# Pobreza extrema TEOT
+df_merge['POB_E_TMEOT'] = (df_merge['Y_TMEOT_SVL'] < df_merge['LPE']).astype(int)
+
+print(df_merge[['POB_TEOT', 'POB_E_TEOT']].describe())
+
+
+
+print(df_merge['TMTOT_PC'].describe())
+
+df_merge['Y_TMTOT_SVL'] = (df_merge['Y_STP_SVL']+ df_merge['TMTOT_PC'])
+
+# Pobreza TMTOT
+df_merge['POB_TMTOT'] = (df_merge['Y_TMTOT_SVL'] < df_merge['LP']).astype(int)
+
+# Pobreza extrema TMTOT
+df_merge['POB_E_TMTOT'] = (df_merge['Y_TMTOT_SVL'] < df_merge['LPE']).astype(int)
+
+print(df_merge[['POB_TMTOT', 'POB_E_TMTOT']].describe())
+
+
+
+
+df_merge['Y_TETOT_SVL'] = (df_merge['Y_STP_SVL']+ df_merge['TETOT_PC'])
+
+# Pobreza TETOT
+df_merge['POB_TETOT'] = (df_merge['Y_TETOT_SVL'] < df_merge['LP']).astype(int)
+
+
+# Pobreza extrema TETOT
+df_merge['POB_E_TETOT'] = (df_merge['Y_TETOT_SVL'] < df_merge['LPE']).astype(int)
+
+print(df_merge[['POB_TETOT', 'POB_E_TETOT']].describe())
+
+
+
+df_merge['Y_TMETOT_SVL'] = (
+    df_merge['Y_STP_SVL'].fillna(0) +
+    df_merge['TETOT_PC'].fillna(0)+
+    df_merge['TMTOT_PC'].fillna(0)
+)
+
+
+# Pobreza TETOT
+df_merge['POB_TMETOT'] = (df_merge['Y_TMETOT_SVL'] < df_merge['LP']).astype(int)
+
+
+# Pobreza extrema TETOT
+df_merge['POB_E_TMETOT'] = (df_merge['Y_TMETOT_SVL'] < df_merge['LPE']).astype(int)
+
+print(df_merge[['POB_TETOT', 'POB_E_TETOT']].describe())
 
 
 
 
 pob_vars = df_merge.filter(regex='^POB').columns
 
+print("\n================ PERSONAS =================")
+
 for var in pob_vars:
+    mask = df_merge[var].notna() & df_merge['FACTOR_y'].notna()
+
     d = sm.stats.DescrStatsW(
-        df_merge[var],
-        weights=df_merge['FACTOR_y'],
+        df_merge.loc[mask, var],
+        weights=df_merge.loc[mask, 'FACTOR_y'],
         ddof=0
     )
 
     print(f"\nVariable: {var}")
-    print("Tasa ponderada:", d.mean*100)
-    print("Total ponderado:", d.sum)
+    print("Tasa ponderada personas:", round(d.mean * 100, 2))
+    print("Total ponderado personas:", round(d.sum, 0))
+
+
+print("\n================ HOGARES =================")
+
+df_jefes = df_merge[df_merge["P001_PARENTESCO"] == 1]
+
+for var in pob_vars:
+    mask = df_jefes[var].notna() & df_jefes['FACTOR_y'].notna()
+
+    d = sm.stats.DescrStatsW(
+        df_jefes.loc[mask, var],
+        weights=df_jefes.loc[mask, 'FACTOR_y'],
+        ddof=0
+    )
+
+    print(f"\nVariable: {var}")
+    print("Tasa ponderada hogares:", round(d.mean * 100, 2))
+    print("Total ponderado hogares:", round(d.sum, 0))
+
+
+df_merge['GRUPO_EDAD'] = pd.cut(
+    df_merge['P003_EDAD'],
+    bins=[-1, 17, 35, 64, np.inf],
+    labels=['0-17', '18-35', '36-64', '65+']
+)
+
+
+print("\n================ PERSONAS POR GRUPO DE EDAD =================")
+
+orden = ['0-17', '18-35', '36-64', '65+']
+
+for var in pob_vars:
+    print(f"\nVariable: {var}")
+
+    for grupo in orden:
+        mask = (
+            (df_merge['GRUPO_EDAD'] == grupo) &
+            df_merge[var].notna() &
+            df_merge['FACTOR_y'].notna()
+        )
+
+        if mask.sum() == 0:
+            continue
+
+        d = sm.stats.DescrStatsW(
+            df_merge.loc[mask, var],
+            weights=df_merge.loc[mask, 'FACTOR_y'],
+            ddof=0
+        )
+
+        print(f"  Grupo {grupo}")
+        print("   Tasa:", round(d.mean * 100, 2))
+        print("   Total:", round(d.sum, 0))
+
+
+print("\n================ PERSONAS POR SEXO =================")
+
+for var in pob_vars:
+    print(f"\nVariable: {var}")
+
+    for sexo in [1, 2]:
+
+        mask = (
+            (df_merge['P002_SEXO'] == sexo) &
+            df_merge[var].notna() &
+            df_merge['FACTOR_y'].notna()
+        )
+
+        if mask.sum() == 0:
+            continue
+
+        d = sm.stats.DescrStatsW(
+            df_merge.loc[mask, var],
+            weights=df_merge.loc[mask, 'FACTOR_y'],
+            ddof=0
+        )
+
+        etiqueta = "Hombres" if sexo == 1 else "Mujeres"
+
+        print(f"  {etiqueta}")
+        print("   Tasa:", round(d.mean * 100, 2))
+        print("   Total:", round(d.sum, 0))
+
+
+
+
+
+# ================================
+# 1️⃣ Función Lorenz + Gini corregida
+# ================================
+
+def lorenz_y_gini(x, w):
+    orden = np.argsort(x)
+    x = x[orden]
+    w = w[orden]
+
+    w_acum = np.cumsum(w)
+    w_total = np.sum(w)
+
+    xw = x * w
+    xw_acum = np.cumsum(xw)
+    xw_total = np.sum(xw)
+
+    Lx = w_acum / w_total
+    Ly = xw_acum / xw_total
+
+    # 🔹 Forzar inicio en (0,0)
+    Lx = np.insert(Lx, 0, 0)
+    Ly = np.insert(Ly, 0, 0)
+
+    B = np.trapz(Ly, Lx)
+    gini = 1 - 2 * B
+
+    return Lx, Ly, gini
+
+
+# ================================
+# 2️⃣ Variables
+# ================================
+
+ingresos = [
+    'H192_ING_CORR_NETO_PC_SVL',
+    'Y_STP_SVL',
+    'Y_TMESS_SVL',
+    'Y_TMEE_SVL',
+    'Y_TMTOT_SVL'
+]
+
+plt.figure()
+
+resultados = []
+
+# ================================
+# 3️⃣ Loop principal
+# ================================
+
+for var in ingresos:
+
+    mask = (
+        df_merge[var].notna() &
+        df_merge['FACTOR_y'].notna() &
+        (df_merge[var] >= 0)
+    )
+
+    x = df_merge.loc[mask, var].values
+    w = df_merge.loc[mask, 'FACTOR_y'].values
+
+    Lx, Ly, g = lorenz_y_gini(x, w)
+
+    resultados.append({
+        "Variable": var,
+        "Gini": round(g, 4)
+    })
+
+    plt.plot(Lx, Ly, label=f"{var} (Gini={round(g,3)})")
+
+
+# ================================
+# 4️⃣ Línea de igualdad perfecta
+# ================================
+
+plt.plot([0,1],[0,1])
+
+plt.xlim(0,1)
+plt.ylim(0,1)
+
+plt.title("Curvas de Lorenz")
+plt.xlabel("Población acumulada")
+plt.ylabel("Ingreso acumulado")
+plt.legend()
+plt.show()
+
+
+# ================================
+# 5️⃣ Tabla resumen
+# ================================
+
+tabla_gini = pd.DataFrame(resultados)
+print(tabla_gini)
+
+
+
+
+
+import numpy as np
+import pandas as pd
+
+# ================================
+# 1️⃣ Función quintiles ponderados
+# ================================
+
+def rangos_quintiles_ponderados(x, w):
+
+    df = pd.DataFrame({
+        "ingreso": x,
+        "peso": w
+    }).sort_values("ingreso")
+
+    df["peso_acum"] = df["peso"].cumsum()
+    total_peso = df["peso"].sum()
+
+    df["percentil"] = df["peso_acum"] / total_peso
+
+    df["quintil"] = pd.cut(
+        df["percentil"],
+        bins=np.linspace(0, 1, 6),
+        labels=[1, 2, 3, 4, 5],
+        include_lowest=True
+    )
+
+    rango = df.groupby("quintil")["ingreso"].agg(["min", "max"]).reset_index()
+
+    return rango
+
+
+# ================================
+# 2️⃣ Variables de ingreso
+# ================================
+
+ingresos = [
+    'H192_ING_CORR_NETO_PC_SVL',
+    'Y_STP_SVL',
+    'Y_TMESS_SVL',
+    'Y_TMEE_SVL',
+    'Y_TMTOT_SVL'
+]
+
+tabla_rangos = []
+
+# ================================
+# 3️⃣ Loop por CADA ingreso
+# ================================
+
+for var in ingresos:
+
+    print(f"\n================ {var} =================")
+
+    mask = (
+        df_merge[var].notna() &
+        df_merge['FACTOR_y'].notna() &
+        (df_merge[var] >= 0)
+    )
+
+    x = df_merge.loc[mask, var].values
+    w = df_merge.loc[mask, 'FACTOR_y'].values
+
+    rango_quintiles = rangos_quintiles_ponderados(x, w)
+
+    print(rango_quintiles)
+
+    # Guardar en tabla final
+    for _, row in rango_quintiles.iterrows():
+        tabla_rangos.append({
+            "Tipo_ingreso": var,
+            "Quintil": int(row["quintil"]),
+            "Ingreso_min": row["min"],
+            "Ingreso_max": row["max"]
+        })
+
+
+# ================================
+# 4️⃣ Tabla consolidada final
+# ================================
+
+tabla_rangos = pd.DataFrame(tabla_rangos)
+
+print("\n================ TABLA CONSOLIDADA =================")
+print(tabla_rangos)
