@@ -1,9 +1,10 @@
-import pyreadstat
-import pandas as pd
-import numpy as np
-import statsmodels.api as sm
 import matplotlib.pyplot as plt
-
+import numpy as np
+import pandas as pd
+import pyreadstat
+import statsmodels.api as sm
+from matplotlib import cm
+import random
 
 # ─────────────────────────────────────────────
 # 1. Ruta y lectura del archivo SPSS
@@ -866,9 +867,8 @@ for var in pob_vars:
 
 
 
-# ================================
-# 1️⃣ Función Lorenz + Gini corregida
-# ================================
+# 1️⃣ Función Lorenz + Gini
+# ==========================================
 
 def lorenz_y_gini(x, w):
     orden = np.argsort(x)
@@ -882,40 +882,50 @@ def lorenz_y_gini(x, w):
     xw_acum = np.cumsum(xw)
     xw_total = np.sum(xw)
 
-    Lx = w_acum / w_total
-    Ly = xw_acum / xw_total
+    Lx = np.insert(w_acum / w_total, 0, 0)
+    Ly = np.insert(xw_acum / xw_total, 0, 0)
 
-    # 🔹 Forzar inicio en (0,0)
-    Lx = np.insert(Lx, 0, 0)
-    Ly = np.insert(Ly, 0, 0)
-
-    B = np.trapz(Ly, Lx)
+    B = np.trapezoid(Ly, Lx)
     gini = 1 - 2 * B
 
     return Lx, Ly, gini
 
 
-# ================================
-# 2️⃣ Variables
-# ================================
+# ==========================================
+# 2️⃣ Variables y etiquetas
+# ==========================================
 
 ingresos = [
     'H192_ING_CORR_NETO_PC_SVL',
     'Y_STP_SVL',
     'Y_TMESS_SVL',
     'Y_TMEE_SVL',
-    'Y_TMTOT_SVL'
+    'Y_TMEOT_SVL',
+    'Y_TMETOT_SVL'
 ]
 
-plt.figure()
+labels_ingresos = {
+    'H192_ING_CORR_NETO_PC_SVL': 'Ingreso corriente neto',
+    'Y_STP_SVL': 'Ingreso neto de impuestos sin transferencias públicas',
+    'Y_TMESS_SVL': 'Ingreso neto de impuestos y sólo con transferencias de la seguridad social',
+    'Y_TMEE_SVL': 'Ingreso neto de impuestos y sólo con transferencias educación',
+    'Y_TMEOT_SVL': 'Ingreso neto de impuestos y sólo con otras transferencias',
+    'Y_TMETOT_SVL': 'Ingreso neto de impuestos con todas las transferencias públicas'
+}
+
+# ==========================================
+# 3️⃣ Gráfico Lorenz
+# ==========================================
+
+plt.figure(figsize=(9,7))
 
 resultados = []
 
-# ================================
-# 3️⃣ Loop principal
-# ================================
+# 🎨 Colores y estilos definidos UNA sola vez
+colores = cm.viridis(np.linspace(0.05, 0.85, len(ingresos)))
+linestyles = ['-', '--', '-.', ':', (0, (5, 1)), (0, (3, 1, 1, 1))]
 
-for var in ingresos:
+for i, var in enumerate(ingresos):
 
     mask = (
         df_merge[var].notna() &
@@ -929,53 +939,94 @@ for var in ingresos:
     Lx, Ly, g = lorenz_y_gini(x, w)
 
     resultados.append({
-        "Variable": var,
+        "Variable": labels_ingresos[var],
         "Gini": round(g, 4)
     })
 
-    plt.plot(Lx, Ly, label=f"{var} (Gini={round(g,3)})")
+    grosor = 3 if i == 0 else 2.5  # primera más gruesa
+
+    plt.plot(
+        Lx, Ly,
+        linewidth=grosor,
+        color=colores[i],
+        linestyle=linestyles[i % len(linestyles)],
+        label=labels_ingresos[var]
+    )
 
 
-# ================================
-# 4️⃣ Línea de igualdad perfecta
-# ================================
+# 🔹 Línea de igualdad (UNA sola vez)
+plt.plot(
+    [0, 1], [0, 1],
+    linestyle='solid',
+    linewidth=1.5,
+    color='grey',
+    label='Igualdad perfecta'
+)
 
-plt.plot([0,1],[0,1])
 
-plt.xlim(0,1)
-plt.ylim(0,1)
+# 🔹 Formato general
+plt.xlim(0, 1)
+plt.ylim(0, 1)
 
+plt.xlabel("Proporción acumulada de población", fontsize=12.5)
+plt.ylabel("Proporción acumulada de ingreso", fontsize=12.5)
 plt.title("Curvas de Lorenz")
-plt.xlabel("Población acumulada")
-plt.ylabel("Ingreso acumulado")
-plt.legend()
+
+plt.subplots_adjust(bottom=0.25)
+
+
+# 🔹 Reordenar leyenda
+handles, labels = plt.gca().get_legend_handles_labels()
+
+orden = []
+
+# 1️⃣ Igualdad perfecta
+orden.append(labels.index('Igualdad perfecta'))
+
+# 2️⃣ Ingreso corriente neto per cápita
+orden.append(labels.index('Ingreso corriente neto'))
+
+# 3️⃣ resto
+for i, lab in enumerate(labels):
+    if lab not in ['Igualdad perfecta', 'Ingreso corriente neto']:
+        orden.append(i)
+
+plt.legend(
+    [handles[i] for i in orden],
+    [labels[i] for i in orden],
+    loc='upper center',
+    bbox_to_anchor=(0.5, -0.15),
+    ncol=2,
+    fontsize=12.5,
+    frameon=False
+)
+
 plt.show()
 
+# ==========================================
+# 4️⃣ Tabla resumen de Gini
+# ==========================================
 
-# ================================
-# 5️⃣ Tabla resumen
-# ================================
+tabla_gini = pd.DataFrame(resultados).sort_values("Gini", ascending=False)
 
-tabla_gini = pd.DataFrame(resultados)
+print("\nCoeficientes de Gini\n")
 print(tabla_gini)
 
-
-
-
-
-import numpy as np
-import pandas as pd
 
 # ================================
 # 1️⃣ Función quintiles ponderados
 # ================================
+# ==========================================
+# 1️⃣ Función: Rangos ponderados por quintil
+# ==========================================
 
 def rangos_quintiles_ponderados(x, w):
 
-    df = pd.DataFrame({
-        "ingreso": x,
-        "peso": w
-    }).sort_values("ingreso")
+    df = (
+        pd.DataFrame({"ingreso": x, "peso": w})
+        .sort_values("ingreso")
+        .reset_index(drop=True)
+    )
 
     df["peso_acum"] = df["peso"].cumsum()
     total_peso = df["peso"].sum()
@@ -989,32 +1040,22 @@ def rangos_quintiles_ponderados(x, w):
         include_lowest=True
     )
 
-    rango = df.groupby("quintil")["ingreso"].agg(["min", "max"]).reset_index()
+    rango = (
+        df.groupby("quintil", observed=True)["ingreso"]
+        .agg(Ingreso_min="min", Ingreso_max="max")
+        .reset_index()
+    )
 
     return rango
 
 
-# ================================
-# 2️⃣ Variables de ingreso
-# ================================
-
-ingresos = [
-    'H192_ING_CORR_NETO_PC_SVL',
-    'Y_STP_SVL',
-    'Y_TMESS_SVL',
-    'Y_TMEE_SVL',
-    'Y_TMTOT_SVL'
-]
+# ==========================================
+# 2️⃣ Loop por tipo de ingreso
+# ==========================================
 
 tabla_rangos = []
 
-# ================================
-# 3️⃣ Loop por CADA ingreso
-# ================================
-
 for var in ingresos:
-
-    print(f"\n================ {var} =================")
 
     mask = (
         df_merge[var].notna() &
@@ -1027,23 +1068,64 @@ for var in ingresos:
 
     rango_quintiles = rangos_quintiles_ponderados(x, w)
 
-    print(rango_quintiles)
+    rango_quintiles["Tipo_ingreso"] = labels_ingresos[var]
 
-    # Guardar en tabla final
-    for _, row in rango_quintiles.iterrows():
-        tabla_rangos.append({
-            "Tipo_ingreso": var,
-            "Quintil": int(row["quintil"]),
-            "Ingreso_min": row["min"],
-            "Ingreso_max": row["max"]
-        })
+    tabla_rangos.append(rango_quintiles)
 
 
-# ================================
-# 4️⃣ Tabla consolidada final
-# ================================
+# ==========================================
+# 3️⃣ Tabla consolidada final
+# ==========================================
 
-tabla_rangos = pd.DataFrame(tabla_rangos)
+tabla_rangos = (
+    pd.concat(tabla_rangos, ignore_index=True)
+    .sort_values(["Tipo_ingreso", "quintil"])
+)
 
-print("\n================ TABLA CONSOLIDADA =================")
+# Opcional: redondear
+tabla_rangos[["Ingreso_min", "Ingreso_max"]] = \
+    tabla_rangos[["Ingreso_min", "Ingreso_max"]].round(2)
+
+print("\n================ RANGOS POR QUINTIL =================\n")
 print(tabla_rangos)
+
+# ==========================================
+# 1️⃣ FORMATO WIDE (ESTILO PAPER)
+# ==========================================
+
+tabla_wide = (
+    tabla_rangos
+    .assign(
+        Rango=lambda df:
+            df["Ingreso_min"].astype(str) + " – " + df["Ingreso_max"].astype(str)
+    )
+    .pivot(index="Tipo_ingreso",
+           columns="quintil",
+           values="Rango")
+    .reset_index()
+)
+
+tabla_wide.columns = [
+    "Tipo de ingreso",
+    "Q1",
+    "Q2",
+    "Q3",
+    "Q4",
+    "Q5"
+]
+
+print("\n=========== TABLA ESTILO PAPER ===========\n")
+print(tabla_wide)
+
+
+# ==========================================
+# 2️⃣ EXPORTAR A EXCEL
+# ==========================================
+
+ruta = "rangos_quintiles.xlsx"
+
+with pd.ExcelWriter(ruta, engine="xlsxwriter") as writer:
+    tabla_rangos.to_excel(writer, sheet_name="Formato_largo", index=False)
+    tabla_wide.to_excel(writer, sheet_name="Formato_paper", index=False)
+
+print(f"\nArchivo exportado correctamente: {ruta}")
